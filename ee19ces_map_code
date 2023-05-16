@@ -1,0 +1,118 @@
+#!/usr/bin/env python 
+
+import obspy
+import numpy as np
+import cartopy
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+
+st = obspy.read('/nfs/a301/earjwara/NA_Data/20150519_152523.a/processed_0.05_2.0/*BHZ*')
+
+"""
+This code creates a map containing points of the earthquakes location and depth, the stations that recorded the signals 
+locations, the Pdiff latitudes and longitudes, and the Sdiff latitudes and longitudes.
+
+Variables:
+lati = earthquake latitude data
+long = earthquake longitude data
+lat = station latitude data
+lon = station longitude data
+dep = earthquake depth
+cmbla_Pdiff = core-mantle boundary (CMB) latitude for diffracted P-waves
+cmblo_Pdiff = CMB longitude for diffracted P-waves
+cmbla_Sdiff = CMB latitude for diffracted S-waves
+cmblo_Sdiff= CMB longitude for diffracted S-waves
+
+Chloe Steele, August 2022
+All corrections made by Jamie Ward
+"""
+#Creating the map
+fig = plt.figure(figsize=(50,16))
+ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
+ax.coastlines()
+ax.set_global()
+
+#Creating lists to put the longitude + latitude data in
+list1 = [] #Latitude
+list2 = [] #Longitude
+#Open file and create header
+file = open('metadata_20150519_152523_BHZ', 'w',)
+file.write("Evla                Evlo               Stla              Stlo                  Evdp \n")
+
+#Loop of earthquake latitude and longitude
+
+for j in range(len(st)):
+    lati = st[j].stats.sac.evla #Loading in Earthquake latitude data
+    long = st[j].stats.sac.evlo #Loading in Earthquake longitude data
+      
+    a = np.array(long) #Longitude array
+    b = np.array(lati) # Latitude array
+    
+    #Plotting the earthquake longitude and latitude data on the coastlines map
+    scatter1 = ax.scatter(a, b, color = 'red', marker='*', linewidths=5, transform=ccrs.Geodetic())
+
+    #Printing the data to screen
+    #print('Evla:', a, 'Evlo:', b)
+    
+    
+#Loop of station latitude and longitude data
+with open('metadata_20150519_152523_BHZ', 'a') as file:
+    for i in range(len(st)):
+        lat = st[i].stats.sac.stla #station latitude data
+        lon = st[i].stats.sac.stlo #station longitude data
+        dep = st[i].stats.sac.evdp #earthquake depth
+#Used to print the earthquake's data next to the stations data into a txt file        
+        file.write(f"{lati} {long} {lat} {lon} {dep} \n")
+    
+        m = list1.append(np.float64(lat))
+        n = list2.append(np.float64(lon))
+        x = np.array(lon) #longitude array
+        y = np.array(lat) # latitude array
+    
+    #Plotting the station longitude and latitude data on the coastlines map
+        scatter2 = ax.scatter(x, y, color = 'blue', marker='^', linewidths=5, transform=ccrs.Geodetic())
+    #Print station latitude and longitude data to screen
+        #print('Stlo:', x, 'Stla:', y)
+#Close file
+file.close()
+
+#Loading in Pdiff latitude data 
+cmbla_Pdiff = np.loadtxt("cmb_20150519_152523_Pdiff.txt", dtype=str, delimiter=" ")[1:].astype(float)
+#loading in Pdiff longitude data
+cmblo_Pdiff = np.loadtxt("cmb_20150519_152523_Pdiff.txt", dtype=str, delimiter=" ")[1:].astype(float)
+
+#loading in Sdiff latitude data
+cmbla_Sdiff = np.loadtxt("cmb_20150519_152523_Sdiff.txt", dtype=str, delimiter=" ")[1:].astype(float)
+#Loading in Sdiff latitude data
+cmblo_Sdiff = np.loadtxt("cmb_20150519_152523_Sdiff.txt", dtype=str, delimiter=" ")[1:].astype(float)
+
+#Adding Pdiff data points to the map
+scatter3 = ax.scatter(cmblo_Pdiff[:, 6], cmbla_Pdiff[:, 5], color= 'pink', marker='d', linewidth=5, transform=ccrs.Geodetic())
+#adding Sdiff data points to the map
+scatter4 = ax.scatter(cmblo_Sdiff[:, 6], cmbla_Sdiff[:, 5], color= 'black', marker='*', linewidth=5, transform=ccrs.Geodetic())
+
+#Add title
+plt.title('Map of Pdiff and Sdiff locations compared to station and earthquake locations', fontsize=20)
+#Add gridlines
+gridlines = ax.gridlines(draw_labels=True)
+#Add latitude axis label
+ax.text(-0.07, 0.55, 'Latitude', va='bottom', ha='center',
+        rotation='vertical', rotation_mode='anchor',
+        transform=ax.transAxes, fontsize=15)
+#Add longitude axis label
+ax.text(0.5, -0.1, 'Longitude', va='bottom', ha='center',
+        rotation='horizontal', rotation_mode='anchor',
+        transform=ax.transAxes, fontsize=15)
+
+#Setting extent of the map (lon_min, lon_max, lat_min, lat_max)
+ax.set_extent([-180, 0, -90, 90], crs=ccrs.PlateCarree())
+
+#Add legend
+ax.legend([scatter1, scatter2, scatter3, scatter4], ['Earthquake_location', 'Station_locations', 'Pdiff_locations', 'Sdiff_locations'], fontsize=15)
+
+#Saving the figure
+plt.savefig('cmb_20150519_152523.pdf')
+plt.savefig('cmb_20150519_152523.png')
+
+#Show map
+plt.show()
